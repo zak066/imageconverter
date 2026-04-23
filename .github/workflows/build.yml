@@ -1,7 +1,6 @@
-name: Build Windows
+name: Build Windows + Release
 
 on:
-  workflow_dispatch:
   push:
     tags:
       - 'v*'
@@ -44,4 +43,27 @@ jobs:
         with:
           name: ImageConverter-win
           path: dist/ImageConverter.exe
-          retention-days: 30
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ImageConverter-win
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ImageConverter.exe
+          name: ${{ github.ref_name }}
+          body: |
+            ImageConverter ${{ github.ref_name }}
+            - Windows executable
+            - Convert images to WebP and AVIF
+            - Multiple resolutions: large, medium, small, x-small
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
