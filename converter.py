@@ -21,6 +21,7 @@ class ImageConverter:
         overwrite: bool = False,
         skip_existing: bool = True,
         resample_method: str = "LANCZOS",
+        generate_sizes: List[str] = None,
         progress_callback: Optional[Callable] = None,
     ):
         self.source_dir = Path(source_dir)
@@ -31,6 +32,13 @@ class ImageConverter:
         self.overwrite = overwrite
         self.skip_existing = skip_existing
         self.resample_method = resample_method
+        self.generate_sizes = generate_sizes or [
+            "original",
+            "large",
+            "medium",
+            "small",
+            "x_small",
+        ]
         self.progress_callback = progress_callback
         self._cancel = False
         self._lock = threading.Lock()
@@ -112,21 +120,30 @@ class ImageConverter:
                 error_msg = ""
                 converted = 0
 
-                out_path = self._get_output_path(base_name, None, output_dir)
-                if self._should_convert(out_path):
-                    self._save_image(img, original_width, base_name, output_dir, None)
-                    converted += 1
-
-                for suffix, target_width in self.dimensions.items():
+                for size_key in self.generate_sizes:
                     if self._cancel:
                         break
-                    out_path = self._get_output_path(base_name, suffix, output_dir)
-                    if self._should_convert(out_path):
-                        resized = self._resize_image(img, target_width)
-                        self._save_image(
-                            resized, target_width, base_name, output_dir, suffix
-                        )
-                        converted += 1
+
+                    if size_key == "original":
+                        out_path = self._get_output_path(base_name, None, output_dir)
+                        if self._should_convert(out_path):
+                            self._save_image(
+                                img, original_width, base_name, output_dir, None
+                            )
+                            converted += 1
+                    else:
+                        suffix = size_key
+                        target_width = self.dimensions.get(suffix)
+                        if target_width:
+                            out_path = self._get_output_path(
+                                base_name, suffix, output_dir
+                            )
+                            if self._should_convert(out_path):
+                                resized = self._resize_image(img, target_width)
+                                self._save_image(
+                                    resized, target_width, base_name, output_dir, suffix
+                                )
+                                converted += 1
 
                 return (image_path.name, True, f"Convertiti {converted} file")
         except Exception as e:
@@ -164,6 +181,7 @@ def convert_files(
     overwrite: bool = False,
     skip_existing: bool = True,
     resample_method: str = "LANCZOS",
+    generate_sizes: List[str] = None,
     progress_callback: Optional[Callable] = None,
 ) -> List[Tuple[str, bool, str]]:
     converter = ImageConverter(
@@ -176,6 +194,7 @@ def convert_files(
         overwrite,
         skip_existing,
         resample_method,
+        generate_sizes,
         progress_callback,
     )
     return converter.convert()

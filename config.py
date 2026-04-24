@@ -57,6 +57,9 @@ class Config:
             ".avif",
         ]
     )
+    generate_sizes: List[str] = field(
+        default_factory=lambda: ["original", "large", "medium", "small", "x_small"]
+    )
 
     def __post_init__(self):
         if self.dimensions is None:
@@ -72,6 +75,8 @@ class Config:
                 ".webp",
                 ".avif",
             ]
+        if not self.generate_sizes:
+            self.generate_sizes = ["original", "large", "medium", "small", "x_small"]
 
 
 class ConfigManager:
@@ -111,6 +116,10 @@ class ConfigManager:
                                 ".avif",
                             ],
                         ),
+                        generate_sizes=data.get(
+                            "generate_sizes",
+                            ["original", "large", "medium", "small", "x_small"],
+                        ),
                     )
             except (json.JSONDecodeError, KeyError):
                 self._config = Config()
@@ -129,6 +138,7 @@ class ConfigManager:
             "skip_existing": config.skip_existing,
             "resample_method": config.resample_method,
             "input_extensions": config.input_extensions,
+            "generate_sizes": config.generate_sizes,
         }
         with open(self.config_path, "w") as f:
             json.dump(data, f, indent=2)
@@ -145,6 +155,7 @@ class ConfigManager:
             "skip_existing": self._config.skip_existing,
             "resample_method": self._config.resample_method,
             "input_extensions": self._config.input_extensions,
+            "generate_sizes": self._config.generate_sizes,
         }
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
@@ -177,6 +188,10 @@ class ConfigManager:
                                 ".webp",
                                 ".avif",
                             ],
+                        ),
+                        generate_sizes=data.get(
+                            "generate_sizes",
+                            ["original", "large", "medium", "small", "x_small"],
                         ),
                     )
                     self.save()

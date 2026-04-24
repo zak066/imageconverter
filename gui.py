@@ -173,7 +173,22 @@ class ImageConverterGUI:
             state="readonly",
             width=10,
         )
-        resample_combo.pack(side=tk.LEFT)
+        resample_combo.pack(side=tk.LEFT, padx=(20, 0))
+
+        sizes_frame = ttk.LabelFrame(
+            main_frame, text="Versioni da generare", padding="10"
+        )
+        sizes_frame.pack(fill=tk.X, pady=(0, 10))
+
+        self.generate_sizes_vars = {}
+        default_sizes = self.config_manager.config.generate_sizes
+        for size_key in ["original", "large", "medium", "small", "x_small"]:
+            var = tk.BooleanVar(value=size_key in default_sizes)
+            label = size_key.replace("_", "-").replace("original", "Originale")
+            ttk.Checkbutton(sizes_frame, text=label, variable=var).pack(
+                side=tk.LEFT, padx=(0, 10)
+            )
+            self.generate_sizes_vars[size_key] = var
 
         self.files_label = ttk.Label(
             main_frame, text="File trovati: 0", font=("Arial", 10)
@@ -280,6 +295,11 @@ class ImageConverterGUI:
     def _save_config(self):
         dims = config.Dimensions(**self._get_dimensions())
         output_folder = self.output_folder_var.get() or None
+
+        generate_sizes = [
+            key for key, var in self.generate_sizes_vars.items() if var.get()
+        ]
+
         cfg = config.Config(
             dimensions=dims,
             output_format=self.format_var.get(),
@@ -289,6 +309,7 @@ class ImageConverterGUI:
             overwrite=self.overwrite_var.get(),
             skip_existing=self.skip_existing_var.get(),
             resample_method=self.resample_var.get(),
+            generate_sizes=generate_sizes,
         )
         self.config_manager.config = cfg
 
@@ -324,6 +345,8 @@ class ImageConverterGUI:
         for key, entry in self.dim_entries.items():
             entry.delete(0, tk.END)
             entry.insert(0, getattr(cfg.dimensions, key))
+        for key, var in self.generate_sizes_vars.items():
+            var.set(key in cfg.generate_sizes)
 
     def _start_convert(self):
         if not self.selected_path or not self.image_files:
@@ -346,6 +369,7 @@ class ImageConverterGUI:
         cfg = self.config_manager.config
         output_format = self._get_output_format()
         formats = [output_format] if output_format != "both" else ["webp", "avif"]
+        generate_sizes = cfg.generate_sizes
 
         def worker():
             total = len(self.image_files) * len(formats)
@@ -366,6 +390,7 @@ class ImageConverterGUI:
                         overwrite=cfg.overwrite,
                         skip_existing=cfg.skip_existing,
                         resample_method=cfg.resample_method,
+                        generate_sizes=generate_sizes,
                         progress_callback=lambda v, n, s: self.root.after(
                             0, lambda: self._update_progress(v, n, s)
                         ),
